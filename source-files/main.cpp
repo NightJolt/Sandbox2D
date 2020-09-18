@@ -30,6 +30,7 @@ int main() {
     R::LoadResources();
 
     TileMap tile_map;
+    tile_map.SetTile(sf::Vector2(0, 0), Tile::Dirt);
 
     Color bg_color = Color(200, 255, 255, 255);
 
@@ -93,7 +94,7 @@ int main() {
             Vector2i grid_position = Math::WorldToGrid(world_position);
 
             if (Input::Hold(Mouse::Left)) {
-                tile_map.SetTile(grid_position, static_cast<Tile::ID>(rand() % Tile::ID::Size));// Tile::Dirt);
+                tile_map.SetTile(grid_position, /*static_cast<Tile::ID>(rand() % Tile::ID::Size));//*/ Tile::Dirt);
             }
 
             if (Input::Hold(Mouse::Right)) {

@@ -30,6 +30,8 @@ struct Tile {
 
     ID id;
     mutable uchar state;
-    uchar rand_texture_pos;
-    mutable ushort light_level[4];
+    uchar rand_texture_coord;
+    mutable uchar light_level[4];
+
+    void* chunk;
 };

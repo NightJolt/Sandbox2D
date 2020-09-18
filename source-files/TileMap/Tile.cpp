@@ -1,6 +1,6 @@
 #include "TileMap/Tile.h"
 
-Tile::Tile() : id(Air), state(0), rand_texture_pos(0) {
+Tile::Tile() : id(Air), state(0), rand_texture_coord(0), chunk(nullptr) {
     for (auto& i : light_level) {
         i = 0;
     }

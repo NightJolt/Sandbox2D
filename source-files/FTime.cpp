@@ -48,7 +48,8 @@ float FTime::RetrieveClock(void* p, std::string k) {
     UniqueKey key = UniqueKey(p, std::move(k));
 
     if (clocks.contains(key)) return clocks[key];
-    else return 0;
+
+    return 0;
 }
 
 void FTime::RemoveClock(void* p, std::string k) {

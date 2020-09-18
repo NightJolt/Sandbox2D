@@ -18,12 +18,16 @@ void TileMap::draw(sf::RenderTarget& rt, sf::RenderStates rs) const {
     const sf::Vector2i s = Math::GridToChunk(Math::WorldToGrid(camera_start_p));
     const sf::Vector2i e = Math::GridToChunk(Math::WorldToGrid(camera_end_p));
 
+    UpdateLightLevels();
+
     for (int x = s.x; x <= e.x; x++) {
         for (int y = s.y; y <= e.y; y++) {
-            const std::string key = to_string_unformatted(sf::Vector2i(x, y));
-            if (!chunks.contains(key)) continue;
+            const Chunk* chunk = GetChunk(sf::Vector2i(x, y));
 
-            const Chunk* chunk = chunks[key];
+            if (!chunk) continue;
+
+            chunk->UpdateMesh();
+            chunk->UpdateLight();
 
             rt.draw(&chunk->GetMesh()[0], chunk->GetMesh().size(), sf::Quads, sf::RenderStates(&R::textures[0]));
         }
@@ -33,26 +37,20 @@ void TileMap::draw(sf::RenderTarget& rt, sf::RenderStates rs) const {
 
 /* ===== CHUNK ===== */
 
-Chunk* TileMap::CreateChunk(sf::Vector2i p) {
-    const std::string key = to_string_unformatted(p);
+Chunk* TileMap::CreateChunk(sf::Vector2i chunk_p) {
+    const std::string key = to_string_unformatted(chunk_p);
 
-    if (!chunks.contains(key)) chunks[key] = new Chunk(p);
+    if (!chunks.contains(key)) chunks[key] = new Chunk(chunk_p);
 
     return chunks[key];
 }
 
-Chunk* TileMap::GetChunk(sf::Vector2i p) {
-    const std::string key = to_string_unformatted(p);
+Chunk* TileMap::GetChunk(sf::Vector2i chunk_p) const {
+    const std::string key = to_string_unformatted(chunk_p);
 
     if (!chunks.contains(key)) return nullptr;
 
     return chunks[key];
-}
-
-void TileMap::RefreshChunk(sf::Vector2i chunk_p) {
-    Chunk* chunk = GetChunk(chunk_p);
-
-    if (chunk) chunk->GenerateMesh();
 }
 
 /* ================= */
@@ -60,113 +58,90 @@ void TileMap::RefreshChunk(sf::Vector2i chunk_p) {
 
 /* ===== TILE ===== */
 
-void TileMap::SetTile(sf::Vector2i grid_p, Tile::ID id, bool allow_overwrite, bool update_chunk) {
+void TileMap::SetTile(sf::Vector2i grid_p, Tile::ID id, bool allow_overwrite) {
     sf::Vector2i chunk_position = Math::GridToChunk(grid_p);
 
     Chunk* chunk = CreateChunk(chunk_position);
 
-    int tile_id = GetTileID(grid_p);
+    int old_tile_id = GetTileID(grid_p);
 
-    if (allow_overwrite || tile_id == Tile::Air) {
-        chunk->SetTile(Math::GridToTile(grid_p), id, TILE_EMPTY_MASK);
-
-        if (id != Tile::Air || tile_id != Tile::Air) UpdateTileState(grid_p);
-
-        const TileData td_o = GetTileData(tile_id);
-        const TileData td_n = GetTileData(id);
-
-        short light_level = td_n.light_emission - td_o.light_emission;
-
-        if (light_level) light_queue.push(LightData(grid_p, light_level));
-
-        if (update_chunk) UpdateLight(), chunk->GenerateMesh();
+    if (allow_overwrite || !GetTileData(old_tile_id).has_mesh) {
+        chunk->SetTile(Math::GridToTile(grid_p), id);
+        UpdateTileState(grid_p);
     }
 }
 
-const Tile* TileMap::GetTile(sf::Vector2i p) {
-    sf::Vector2i chunk_position = Math::GridToChunk(p);
+const Tile* TileMap::GetTile(sf::Vector2i grid_p) const {
+    sf::Vector2i chunk_position = Math::GridToChunk(grid_p);
     const std::string key = to_string_unformatted(chunk_position);
 
     if (!chunks.contains(key)) return nullptr;
 
-    return chunks[key]->GetTile(Math::GridToTile(p));
+    return chunks[key]->GetTile(Math::GridToTile(grid_p));
 }
 
-Tile::ID TileMap::GetTileID(sf::Vector2i p) {
+Tile::ID TileMap::GetTileID(sf::Vector2i p) const {
     const Tile* tile = GetTile(p);
 
     return tile ? tile->id : Tile::Air;
 }
 
-void TileMap::UpdateTileState(sf::Vector2i p) {
+void TileMap::UpdateTileState(sf::Vector2i grid_p) const {
     uchar mask = 0;
-    const Tile* tile;
-
-    const Tile* self_tile = GetTile(p);
-    int self_id = self_tile->id;
-
-    sf::Vector2i self_chunk_p = Math::GridToChunk(p);
-    sf::Vector2i chunk_p;
+    const Tile* other_tile;
+    const Tile* self_tile = GetTile(grid_p);
 
     // RIGHT
-    tile = GetTile(p + sf::Vector2i(-1, 0));
-    if (tile && tile->id != Tile::Air) {
-        mask |= TILE_LEFT_MASK;
-
-        if (self_id == Tile::Air)
-            tile->AppendState(~TILE_RIGHT_MASK);
-        else
-            tile->AppendState(TILE_RIGHT_MASK);
-
-    }
-
-    chunk_p = Math::GridToChunk(p + sf::Vector2i(-1, 0));
-    if (chunk_p != self_chunk_p) RefreshChunk(chunk_p);
-
-    // LEFT
-    tile = GetTile(p + sf::Vector2i(1, 0));
-    if (tile && tile->id != Tile::Air) {
+    other_tile = GetTile(grid_p + sf::Vector2i(1, 0));
+    if (other_tile && GetTileData(other_tile->id).has_mesh) {
         mask |= TILE_RIGHT_MASK;
 
-        if (self_id == Tile::Air)
-            tile->AppendState(~TILE_LEFT_MASK);
+        if (GetTileData(self_tile->id).has_mesh)
+            other_tile->AppendState(TILE_LEFT_MASK);
         else
-            tile->AppendState(TILE_LEFT_MASK);
+            other_tile->AppendState(~TILE_LEFT_MASK);
 
+        ((Chunk*)other_tile->chunk)->must_update_mesh = true;
     }
 
-    chunk_p = Math::GridToChunk(p + sf::Vector2i(1, 0));
-    if (chunk_p != self_chunk_p) RefreshChunk(chunk_p);
+    // LEFT
+    other_tile = GetTile(grid_p + sf::Vector2i(-1, 0));
+    if (other_tile && GetTileData(other_tile->id).has_mesh) {
+        mask |= TILE_LEFT_MASK;
+
+        if (GetTileData(self_tile->id).has_mesh)
+            other_tile->AppendState(TILE_RIGHT_MASK);
+        else
+            other_tile->AppendState(~TILE_RIGHT_MASK);
+
+        ((Chunk*)other_tile->chunk)->must_update_mesh = true;
+    }
 
     // UP
-    tile = GetTile(p + sf::Vector2i(0, -1));
-    if (tile && tile->id != Tile::Air) {
+    other_tile = GetTile(grid_p + sf::Vector2i(0, -1));
+    if (other_tile && GetTileData(other_tile->id).has_mesh) {
         mask |= TILE_UP_MASK;
 
-        if (self_id == Tile::Air)
-            tile->AppendState(~TILE_DOWN_MASK);
+        if (GetTileData(self_tile->id).has_mesh)
+            other_tile->AppendState(TILE_DOWN_MASK);
         else
-            tile->AppendState(TILE_DOWN_MASK);
+            other_tile->AppendState(~TILE_DOWN_MASK);
 
+        ((Chunk*)other_tile->chunk)->must_update_mesh = true;
     }
-
-    chunk_p = Math::GridToChunk(p + sf::Vector2i(0, -1));
-    if (chunk_p != self_chunk_p) RefreshChunk(chunk_p);
 
     // DOWN
-    tile = GetTile(p + sf::Vector2i(0, 1));
-    if (tile && tile->id != Tile::Air) {
+    other_tile = GetTile(grid_p + sf::Vector2i(0, 1));
+    if (other_tile && GetTileData(other_tile->id).has_mesh) {
         mask |= TILE_DOWN_MASK;
 
-        if (self_id == Tile::Air)
-            tile->AppendState(~TILE_UP_MASK);
+        if (GetTileData(self_tile->id).has_mesh)
+            other_tile->AppendState(TILE_UP_MASK);
         else
-            tile->AppendState(TILE_UP_MASK);
+            other_tile->AppendState(~TILE_UP_MASK);
 
+        ((Chunk*)other_tile->chunk)->must_update_mesh = true;
     }
-
-    chunk_p = Math::GridToChunk(p + sf::Vector2i(0, 1));
-    if (chunk_p != self_chunk_p) RefreshChunk(chunk_p);
 
     self_tile->AppendState(mask);
 }
@@ -174,19 +149,99 @@ void TileMap::UpdateTileState(sf::Vector2i p) {
 /* ================ */
 
 
-void TileMap::UpdateLight() {
-    std::unordered_map <std::string, bool> fix;
+void TileMap::UpdateLightLevels() const {
+    /*std::unordered_set <std::string> fix;
+
+    auto push_light = [&](char v) {
+        if (v) {
+            light_queue.push(LightData(grid_p, v));
+            light_queue.push(LightData(grid_p + sf::Vector2(0, 1), v));
+            light_queue.push(LightData(grid_p + sf::Vector2(1, 1), v));
+            light_queue.push(LightData(grid_p + sf::Vector2(1, 0), v));
+        }
+    };
+
+    auto spread_light = [&](sf::Vector2i p, char v) {
+        if (v > 0) {
+            light_queue.push(LightData(p + sf::Vector2i(0, -1), v, false));
+            light_queue.push(LightData(p + sf::Vector2i(0, 1), v, false));
+            light_queue.push(LightData(p + sf::Vector2i(-1, 0), v, false));
+            light_queue.push(LightData(p + sf::Vector2i(1, 0), v, false));
+        }
+    };
 
     while (!light_queue.empty()) {
         LightData ld = light_queue.front();
         light_queue.pop();
 
-        const Tile* tile = GetTile(ld.p);
+        std::string key = to_string_unformatted(ld.position);
+        if (!fix.contains(key)) continue;
+
+        fix.insert(key);
+
+        const Tile* tile;
+        Chunk* chunk;
+        bool has_mesh;
+        char new_light;
+
+        // DOWN_RIGH
+
+        tile = GetTile(ld.position);
 
         if (tile) {
-            for (auto& light : tile->light_level) {
-                light = ld.v;
-            }
+            chunk = (Chunk*)tile->chunk;
+            has_mesh = GetTileData(tile->id).has_mesh;
+            new_light = has_mesh ? new_tile_light : new_space_light;
+
+            tile->light_level[0] = new_light;
+            chunk->must_update_light = true;
+
+            //push_light(ld.position, new_light);
         }
-    }
+
+        // UP_LEFT
+
+        tile = GetTile(ld.position + sf::Vector2(-1, -1));
+
+        if (tile) {
+            chunk = (Chunk*)tile->chunk;
+            has_mesh = GetTileData(tile->id).has_mesh;
+            new_light = has_mesh ? new_tile_light : new_space_light;
+
+            tile->light_level[3] = new_light;
+            chunk->must_update_light = true;
+
+            //push_light(ld.position, new_light);
+        }
+
+        // DOWN_LEFT
+
+        tile = GetTile(ld.position + sf::Vector2(-1, 0));
+
+        if (tile) {
+            chunk = (Chunk*)tile->chunk;
+            has_mesh = GetTileData(tile->id).has_mesh;
+            new_light = has_mesh ? new_tile_light : new_space_light;
+
+            tile->light_level[2] = new_light;
+            chunk->must_update_light = true;
+
+            //push_light(ld.position, new_light);
+        }
+
+        // UP_RIGH
+
+        tile = GetTile(ld.position + sf::Vector2(0, -1));
+
+        if (tile) {
+            chunk = (Chunk*)tile->chunk;
+            has_mesh = GetTileData(tile->id).has_mesh;
+            new_light = has_mesh ? new_tile_light : new_space_light;
+
+            tile->light_level[1] = new_light;
+            chunk->must_update_light = true;
+
+            //push_light(ld.position, new_light);
+        }
+    }*/
 }

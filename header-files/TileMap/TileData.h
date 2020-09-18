@@ -2,24 +2,41 @@
 
 #include "globals.h"
 
-#define MAX_LIGHT_LEVEL (ushort)16
+#define MAX_LIGHT_LEVEL (uchar)16
 
 struct TileData {
-    ushort light_emission = 0;
+    std::string name;
+
+    bool has_mesh = false;
+
+    char light_emission = 0;
+    char light_absorption = 0;
 };
 
 const TileData TILE_DATA[] = {
-        { // AIR
-            0
+        {
+            "air",
+            false,
+            0,
+            1
         },
-        { // DIRT
-            0
+        {
+            "dirt",
+            true,
+            6,
+            4
         },
-        { // COBBLE
-            0
+        {
+            "cobble",
+            true,
+            0,
+            4
         },
-        { // SAND
-            MAX_LIGHT_LEVEL
+        {
+            "sand",
+            true,
+            MAX_LIGHT_LEVEL,
+            4
         }
 };
 

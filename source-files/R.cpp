@@ -7,7 +7,7 @@ const std::string R::shaders_directory = R::resources_directory + "shaders/";
 
 std::vector <sf::Texture> R::textures = std::vector <sf::Texture> ();
 const std::string R::textures_to_load[] = {
-        "tile_atlas.png"
+        "tile_atlas_beta.png"
 };
 
 std::vector <sf::Font> R::fonts = std::vector <sf::Font> ();
