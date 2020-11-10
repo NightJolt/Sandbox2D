@@ -2,13 +2,12 @@
 
 #include "globals.h"
 
-#define TILE_UP_MASK (uchar)1
-#define TILE_RIGHT_MASK (uchar)2
-#define TILE_DOWN_MASK (uchar)4
-#define TILE_LEFT_MASK (uchar)8
-
-#define TILE_EMPTY_MASK (uchar)0
-#define TILE_FULL_MASK (TILE_UP_MASK | TILE_RIGHT_MASK | TILE_DOWN_MASK | TILE_LEFT_MASK)
+#define TILE_UP_MASK      (uint8)1 << 0
+#define TILE_RIGHT_MASK   (uint8)1 << 1
+#define TILE_DOWN_MASK    (uint8)1 << 2
+#define TILE_LEFT_MASK    (uint8)1 << 3
+#define TILE_EMPTY_MASK   (uint8)0
+#define TILE_FULL_MASK    (TILE_UP_MASK | TILE_RIGHT_MASK | TILE_DOWN_MASK | TILE_LEFT_MASK)
 
 #define STATE_COUNT 16
 #define TILE_TEXTURE_SIZE 8
@@ -21,17 +20,17 @@ struct Tile {
         Cobble,
         Sand,
 
-        Size
+        Count
     };
 
     Tile();
 
-    void AppendState(uchar) const;
+    void AppendState(uint8);
 
     ID id;
-    mutable uchar state;
-    uchar rand_texture_coord;
-    mutable uchar light_level[4];
+    uint8 state;
+    uint8 rand_texture_coord;
+    uint8 light_level[4];
 
     void* chunk;
 };

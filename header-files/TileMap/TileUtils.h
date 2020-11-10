@@ -6,13 +6,13 @@
 
 class TileUtils {
 public:
-    static sf::Color LightLevelToColor(uchar);
+    static sf::Color LightLevelToColor(uint8);
 
     struct LightData {
-        LightData(sf::Vector2i p, char v, sf::Color color) : position(p), value(v), color(color) {}
+        LightData(sf::Vector2i p, int8 v, sf::Color color) : position(p), value(v), color(color) {}
 
         sf::Vector2i position;
-        char value;
+        int8 value;
         sf::Color color;
     };
 };

@@ -2,11 +2,11 @@
 
 TileMap::TileMap() = default;
 
-TileMap::~TileMap() noexcept {
-    for (auto& [k, v] : chunks) delete v;
+TileMap::~TileMap() {
+    for (auto& [_, chunk] : chunks) delete chunk;
 }
 
-void TileMap::draw(sf::RenderTarget& rt, sf::RenderStates rs) const {
+void TileMap::Draw(sf::RenderTarget& rt) {
     const sf::View view = rt.getView();
 
     const sf::Vector2f view_center = view.getCenter();
@@ -18,16 +18,16 @@ void TileMap::draw(sf::RenderTarget& rt, sf::RenderStates rs) const {
     const sf::Vector2i s = Math::GridToChunk(Math::WorldToGrid(camera_start_p));
     const sf::Vector2i e = Math::GridToChunk(Math::WorldToGrid(camera_end_p));
 
-    UpdateLightLevels();
+    //UpdateLightLevels();
 
     for (int x = s.x; x <= e.x; x++) {
         for (int y = s.y; y <= e.y; y++) {
-            const Chunk* chunk = GetChunk(sf::Vector2i(x, y));
+            Chunk* chunk = GetChunk(sf::Vector2i(x, y));
 
             if (!chunk) continue;
 
             chunk->UpdateMesh();
-            chunk->UpdateLight();
+            //chunk->UpdateLight();
 
             rt.draw(&chunk->GetMesh()[0], chunk->GetMesh().size(), sf::Quads, sf::RenderStates(&R::textures[0]));
         }
@@ -38,15 +38,15 @@ void TileMap::draw(sf::RenderTarget& rt, sf::RenderStates rs) const {
 /* ===== CHUNK ===== */
 
 Chunk* TileMap::CreateChunk(sf::Vector2i chunk_p) {
-    const std::string key = to_string_unformatted(chunk_p);
+    const std::string key = to_string_key(chunk_p);
 
     if (!chunks.contains(key)) chunks[key] = new Chunk(chunk_p);
 
     return chunks[key];
 }
 
-Chunk* TileMap::GetChunk(sf::Vector2i chunk_p) const {
-    const std::string key = to_string_unformatted(chunk_p);
+Chunk* TileMap::GetChunk(sf::Vector2i chunk_p) {
+    const std::string key = to_string_key(chunk_p);
 
     if (!chunks.contains(key)) return nullptr;
 
@@ -71,25 +71,25 @@ void TileMap::SetTile(sf::Vector2i grid_p, Tile::ID id, bool allow_overwrite) {
     }
 }
 
-const Tile* TileMap::GetTile(sf::Vector2i grid_p) const {
+Tile* TileMap::GetTile(sf::Vector2i grid_p) {
     sf::Vector2i chunk_position = Math::GridToChunk(grid_p);
-    const std::string key = to_string_unformatted(chunk_position);
+    const std::string key = to_string_key(chunk_position);
 
     if (!chunks.contains(key)) return nullptr;
 
     return chunks[key]->GetTile(Math::GridToTile(grid_p));
 }
 
-Tile::ID TileMap::GetTileID(sf::Vector2i p) const {
+Tile::ID TileMap::GetTileID(sf::Vector2i p) {
     const Tile* tile = GetTile(p);
 
     return tile ? tile->id : Tile::Air;
 }
 
-void TileMap::UpdateTileState(sf::Vector2i grid_p) const {
-    uchar mask = 0;
-    const Tile* other_tile;
-    const Tile* self_tile = GetTile(grid_p);
+void TileMap::UpdateTileState(sf::Vector2i grid_p) {
+    uint8 mask = TILE_EMPTY_MASK;
+    Tile* other_tile;
+    Tile* self_tile = GetTile(grid_p);
 
     // RIGHT
     other_tile = GetTile(grid_p + sf::Vector2i(1, 0));
@@ -100,8 +100,6 @@ void TileMap::UpdateTileState(sf::Vector2i grid_p) const {
             other_tile->AppendState(TILE_LEFT_MASK);
         else
             other_tile->AppendState(~TILE_LEFT_MASK);
-
-        ((Chunk*)other_tile->chunk)->must_update_mesh = true;
     }
 
     // LEFT
@@ -113,8 +111,6 @@ void TileMap::UpdateTileState(sf::Vector2i grid_p) const {
             other_tile->AppendState(TILE_RIGHT_MASK);
         else
             other_tile->AppendState(~TILE_RIGHT_MASK);
-
-        ((Chunk*)other_tile->chunk)->must_update_mesh = true;
     }
 
     // UP
@@ -126,8 +122,6 @@ void TileMap::UpdateTileState(sf::Vector2i grid_p) const {
             other_tile->AppendState(TILE_DOWN_MASK);
         else
             other_tile->AppendState(~TILE_DOWN_MASK);
-
-        ((Chunk*)other_tile->chunk)->must_update_mesh = true;
     }
 
     // DOWN
@@ -139,8 +133,6 @@ void TileMap::UpdateTileState(sf::Vector2i grid_p) const {
             other_tile->AppendState(TILE_UP_MASK);
         else
             other_tile->AppendState(~TILE_UP_MASK);
-
-        ((Chunk*)other_tile->chunk)->must_update_mesh = true;
     }
 
     self_tile->AppendState(mask);
@@ -149,8 +141,8 @@ void TileMap::UpdateTileState(sf::Vector2i grid_p) const {
 /* ================ */
 
 
-void TileMap::UpdateLightLevels() const {
-    /*std::unordered_set <std::string> fix;
+/*void TileMap::UpdateLightLevels() {
+    std::unordered_set <std::string> fix;
 
     auto push_light = [&](char v) {
         if (v) {
@@ -243,5 +235,5 @@ void TileMap::UpdateLightLevels() const {
 
             //push_light(ld.position, new_light);
         }
-    }*/
-}
+    }
+}*/

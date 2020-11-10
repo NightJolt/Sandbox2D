@@ -2,15 +2,15 @@
 
 #include "globals.h"
 
-#define MAX_LIGHT_LEVEL (uchar)16
+#define MAX_LIGHT_LEVEL (uint8)16
 
 struct TileData {
     std::string name;
 
     bool has_mesh = false;
 
-    char light_emission = 0;
-    char light_absorption = 0;
+    int8 light_emission = 0;
+    int8 light_absorption = 0;
 };
 
 const TileData TILE_DATA[] = {
@@ -41,5 +41,5 @@ const TileData TILE_DATA[] = {
 };
 
 inline const TileData& GetTileData(int id) {
-    return TILE_DATA[id + 1]; // +1 cuz AIR is -1
+    return TILE_DATA[id + 1]; // +1 cuz AIR id is -1
 }

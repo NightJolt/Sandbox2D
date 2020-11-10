@@ -1,6 +1,6 @@
 #include "TileMap/Chunk.h"
 
-Chunk::Chunk(sf::Vector2i p) : position(Math::GridToWorld(Math::ChunkToGrid(p))), must_update_light(false), must_update_mesh(false) {
+Chunk::Chunk(sf::Vector2i p) : position(Math::GridToWorld(Math::ChunkToGrid(p))) {
     for (int x = 0; x < CHUNK_SIZE; x++) {
         for (int y = 0; y < CHUNK_SIZE; y++) {
             tiles[x][y].chunk = this;
@@ -12,21 +12,17 @@ void Chunk::SetTile(sf::Vector2i p, Tile::ID id) {
     tiles[p.x][p.y].id = id;
     tiles[p.x][p.y].state = TILE_EMPTY_MASK;
 
-    uint texture_coord = STATE_COUNT * TILE_TEXTURE_SIZE;
-    texture_coord *= Math::Random(0, RAND_TILE_TEXTURE_COUNT);
+    uint32 rand_texture_coord = STATE_COUNT * TILE_TEXTURE_SIZE;
+    rand_texture_coord *= Math::Random(0, RAND_TILE_TEXTURE_COUNT);
 
-    tiles[p.x][p.y].rand_texture_coord = texture_coord;
-
-    must_update_mesh = true;
+    tiles[p.x][p.y].rand_texture_coord = rand_texture_coord;
 }
 
-const Tile* Chunk::GetTile(sf::Vector2i p) {
+Tile* Chunk::GetTile(sf::Vector2i p) {
     return &tiles[p.x][p.y];
 }
 
-void Chunk::UpdateMesh() const {
-    if (!must_update_mesh) return;
-
+void Chunk::UpdateMesh() {
     mesh.clear();
 
     for (int x = 0; x < CHUNK_SIZE; x++) {
@@ -36,18 +32,13 @@ void Chunk::UpdateMesh() const {
             GenerateMeshForTile(sf::Vector2i(x, y), mesh.size());
         }
     }
-
-    must_update_light = true;
-    must_update_mesh = false;
 }
 
-const std::vector<sf::Vertex>& Chunk::GetMesh() const {
+const std::vector <sf::Vertex>& Chunk::GetMesh() {
     return mesh;
 }
 
-void Chunk::UpdateLight() const {
-    if (!must_update_light) return;
-
+void Chunk::UpdateLight() {
     int vert_ind = 0;
 
     for (int x = 0; x < CHUNK_SIZE; x++) {
@@ -61,8 +52,6 @@ void Chunk::UpdateLight() const {
             vert_ind += 4;
         }
     }
-
-    must_update_light = false;
 }
 
 /*
@@ -94,7 +83,7 @@ void Chunk::UpdateLight() const {
     }
 }*/
 
-void Chunk::GenerateMeshForTile(sf::Vector2i tile_p, int vert_ind) const {
+void Chunk::GenerateMeshForTile(sf::Vector2i tile_p, int vert_ind) {
     uint texture_coord = tiles[tile_p.x][tile_p.y].rand_texture_coord + TILE_TEXTURE_SIZE * tiles[tile_p.x][tile_p.y].state;
 
     mesh.insert(mesh.begin() + vert_ind, sf::Vertex(

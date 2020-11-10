@@ -32,7 +32,7 @@ int main() {
     TileMap tile_map;
     tile_map.SetTile(sf::Vector2(0, 0), Tile::Dirt);
 
-    Color bg_color = Color(200, 255, 255, 255);
+    const Color bg_color = Color(200, 255, 255, 255);
 
     UIText fps(sf::Vector2f(10, 10));
     fps.settings.stick_to_point = UI::StickPoint::TOP_RIGHT;
@@ -85,7 +85,7 @@ int main() {
         /* ============================= */
 
 
-        fps.text.setString(to_string(FTime::FPS()));
+        fps.text.setString(to_string((int)FTime::FPS()));
 
         Vector2i mouse_position = Mouse::getPosition(window);
 
@@ -105,7 +105,7 @@ int main() {
         window.clear(bg_color);
 
         // world space
-        window.draw(tile_map);
+        tile_map.Draw(window);
 
         // screen space
         window.setView(View(sf::FloatRect(0, 0, screen_resolution.x, screen_resolution.y)));

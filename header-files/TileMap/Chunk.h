@@ -12,24 +12,21 @@ public:
     explicit Chunk(sf::Vector2i);
 
     void SetTile(sf::Vector2i, Tile::ID);
-    const Tile* GetTile(sf::Vector2i);
+    Tile* GetTile(sf::Vector2i);
 
-    void UpdateMesh() const;
-    //void UpdateMesh(sf::Vector2i, Tile::ID) const;
-    void UpdateLight() const;
+    void UpdateMesh();
+    //void UpdateMesh(sf::Vector2i, Tile::ID);
+    void UpdateLight();
 
-    [[nodiscard]] const std::vector <sf::Vertex>& GetMesh() const;
-
-    mutable bool must_update_mesh;
-    mutable bool must_update_light;
+    const std::vector <sf::Vertex>& GetMesh();
 
 private:
-    void GenerateMeshForTile(sf::Vector2i, int) const;
+    void GenerateMeshForTile(sf::Vector2i, int);
 
     sf::Vector2i position;
 
     Tile tiles[CHUNK_SIZE][CHUNK_SIZE];
-    mutable std::vector <sf::Vertex> mesh;
+    std::vector <sf::Vertex> mesh;
 
-    std::vector <TileUtils::LightData> light_sources;
+    //std::vector <TileUtils::LightData> light_sources;
 };
